@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>University Portal Login</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f0f4f8;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .login-container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      width: 400px;
+      text-align: center;
+    }
+    h2 { margin-bottom: 20px; color: #004080; }
+    .tab { display: flex; justify-content: space-around; margin-bottom: 20px; border-bottom: 2px solid #ddd; }
+    .tab button { flex: 1; padding: 10px; border: none; background: none; cursor: pointer; font-weight: bold; color: #555; }
+    .tab button.active { border-bottom: 3px solid #0073b1; color: #0073b1; }
+    .form { display: none; }
+    .form.active { display: block; }
+    input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; }
+    button.login-btn { width: 100%; padding: 12px; background: #0073b1; border: none; color: white; font-weight: bold; border-radius: 5px; cursor: pointer; }
+    button.login-btn:hover { background: #005f8a; }
+    .link { margin-top: 12px; display: block; color: #0073b1; cursor: pointer; font-size: 14px; text-decoration: underline; }
+  </style>
+
+  <!-- Firebase Modular SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyC922Telwg2apGsq1wANXYKULBcvoUyTwo",
+      authDomain: "password-6ab80.firebaseapp.com",
+      projectId: "password-6ab80",
+      storageBucket: "password-6ab80.firebasestorage.app",
+      messagingSenderId: "587814295378",
+      appId: "1:587814295378:web:4d20314e1b5c03678d0c8b"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    async function login(role) {
+      const email = document.getElementById(role+"Email").value;
+      const password = document.getElementById(role+"Password").value;
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const uid = userCredential.user.uid;
+
+        const docRef = doc(db, "users", uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const userData = docSnap.data();
+          if (userData.role === role) {
+            if (role === "student") window.location.href = "studentdashboard.html";
+            if (role === "lecturer") window.location.href = "lecturerportal.html";
+          } else {
+            alert("Role mismatch! Your account is registered as " + userData.role);
+          }
+        } else {
+          alert("User data not found.");
+        }
+      } catch (err) {
+        alert("Login failed: " + err.message);
+      }
+    }
+
+    async function sendResetLink() {
+      const email = document.getElementById("resetEmail").value.trim();
+      if (!email) return alert("Please enter your email");
+      try {
+        await sendPasswordResetEmail(auth, email);
+        alert("Password reset link sent to " + email);
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    window.login = login;
+    window.sendResetLink = sendResetLink;
+  </script>
+</head>
+<body>
+  <div class="login-container">
+    <h2>University Portal Login</h2>
+    <div class="tab">
+      <button class="active" onclick="showForm('studentForm', this)">Student</button>
+      <button onclick="showForm('lecturerForm', this)">Lecturer</button>
+    </div>
+
+    <!-- Student Login Form -->
+    <div id="studentForm" class="form active">
+      <input type="email" id="studentEmail" placeholder="Student Email" required>
+      <input type="password" id="studentPassword" placeholder="Password" required>
+      <button class="login-btn" onclick="login('student')">Login as Student</button>
+    </div>
+
+    <!-- Lecturer Login Form -->
+    <div id="lecturerForm" class="form">
+      <input type="email" id="lecturerEmail" placeholder="Lecturer Email" required>
+      <input type="password" id="lecturerPassword" placeholder="Password" required>
+      <span class="link" onclick="document.getElementById('forgotPasswordForm').style.display='block'">Forgot Password?</span>
+      <button class="login-btn" onclick="login('lecturer')">Login as Lecturer</button>
+
+      <div id="forgotPasswordForm" style="display:none; margin-top:15px;">
+        <label for="resetEmail">Enter your email to reset password:</label>
+        <input type="email" id="resetEmail" placeholder="Email address" />
+        <button class="login-btn" style="margin-top:10px;" onclick="sendResetLink()">Send Reset Link</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showForm(formId, btn) {
+      document.querySelectorAll('.form').forEach(f => f.classList.remove('active'));
+      document.getElementById(formId).classList.add('active');
+      document.querySelectorAll('.tab button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+  </script>
+</body>
+</html>

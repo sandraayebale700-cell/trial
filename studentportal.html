@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Portal</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #f9fbfd; display: flex; }
+    .sidebar { width: 260px; background: #0073b1; color: white; height: 100vh; padding: 0; }
+    .profile { background: #ff5722; text-align: center; padding: 20px 10px; }
+    .profile img { width: 90px; height: 90px; border-radius: 50%; margin-bottom: 10px; }
+    .profile h3 { margin: 0; font-size: 16px; }
+    .profile p { margin: 2px 0; font-size: 13px; }
+    .sidebar ul { list-style: none; padding: 0; margin: 0; }
+    .sidebar ul li { padding: 12px 20px; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.2); cursor: pointer; }
+    .sidebar ul li:hover, .sidebar ul li.active { background: #005f8a; }
+    .btn-vote { background: #ffeb3b; color: black; font-weight: bold; padding: 12px; text-align: center; border-radius: 4px; margin: 15px; cursor: pointer; }
+    .main { flex: 1; padding: 20px 30px; overflow-y: auto; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .header h2 { margin: 0; color: #004080; }
+    .btn-yellow { background: #ffc107; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+    .status { background: #0066cc; color: white; padding: 10px 15px; border-radius: 5px; margin-bottom: 20px; font-weight: bold; }
+    .account-info { display: flex; justify-content: flex-end; align-items: center; margin-bottom: 10px; gap: 10px; }
+    .account-info span { color: red; margin-left: 20px; font-weight: bold; }
+    .section { display: none; }
+    .section.active { display: block; }
+    .table-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; }
+    table th, table td { padding: 12px; border-bottom: 1px solid #ddd; text-align: left; font-size: 14px; }
+    table th { background: #f1f3f5; }
+    .paid { color: green; font-weight: bold; }
+    .due { color: red; font-weight: bold; }
+    .btn-small { background: #0073b1; color: white; padding: 6px 10px; border-radius: 4px; border: none; cursor: pointer; font-size: 12px; margin-bottom: 10px; }
+  </style>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { getFirestore, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_AUTH_DOMAIN",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_STORAGE_BUCKET",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    function showSection(sectionId, element) {
+      document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+      document.getElementById(sectionId).classList.add('active');
+      document.querySelectorAll('.sidebar ul li').forEach(li => li.classList.remove('active'));
+      element.classList.add('active');
+    }
+
+    async function loadInvoices(uid) {
+      const q = query(collection(db, "invoices"), where("studentId", "==", uid));
+      const snap = await getDocs(q);
+      const tbody = document.querySelector("#invoices tbody");
+      tbody.innerHTML = "";
+      snap.forEach(doc => {
+        const data = doc.data();
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${data.invoiceNo}</td><td>${data.amount}</td><td>${data.paid}</td><td>${data.due}</td><td>${data.narration}</td><td>${data.status}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function loadResults(uid) {
+      const q = query(collection(db, "results"), where("studentId", "==", uid));
+      const snap = await getDocs(q);
+      const tbody = document.querySelector("#results tbody");
+      tbody.innerHTML = "";
+      snap.forEach(doc => {
+        const data = doc.data();
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${data.course}</td><td>${data.grade}</td><td>${data.gpa}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function loadCourses(uid) {
+      const q = query(collection(db, "courses"), where("studentId", "==", uid));
+      const snap = await getDocs(q);
+      const tbody = document.querySelector("#courses tbody");
+      tbody.innerHTML = "";
+      snap.forEach(doc => {
+        const data = doc.data();
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${data.code}</td><td>${data.title}</td><td>${data.credits}</td><td>${data.status}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function logout() { signOut(auth).then(()=> window.location.href="loginform.html"); }
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        window.location.href = "loginform.html";
+        return;
+      }
+      // Load student data from Firebase
+      loadInvoices(user.uid);
+      loadResults(user.uid);
+      loadCourses(user.uid);
+    });
+
+    window.addEventListener("DOMContentLoaded", () => {
+      document.querySelectorAll(".sidebar ul li").forEach(li => {
+        li.addEventListener("click", () => {
+          const section = li.getAttribute("data-section");
+          showSection(section, li);
+        });
+      });
+      showSection("invoices", document.querySelector(".sidebar ul li[data-section='invoices']"));
+    });
+
+    window.logout = logout;
+  </script>
+</head>
+<body>
+  <div class="sidebar">
+    <div class="profile">
+      <img src="https://via.placeholder.com/90" alt="Profile">
+      <h3 id="studentName">Student</h3>
+      <p id="studentId">ID</p>
+    </div>
+    <ul>
+      <li data-section="invoices">📄 My Invoices</li>
+      <li data-section="transactions">💳 My Transactions/Ledger</li>
+      <li data-section="selfreg">📝 Self Registration</li>
+      <li data-section="regtrack">📘 Registration/Student Track</li>
+      <li data-section="results">📕 My Results</li>
+      <li data-section="courses">📚 My Course</li>
+      <li data-section="services">⚙️ Services</li>
+      <li data-section="personal">👤 Personal Information</li>
+      <li data-section="general">ℹ️ General Information</li>
+      <li data-section="tuition">📑 Tuition Contract</li>
+    </ul>
+    <div class="btn-vote">✔ E-VOTING</div>
+  </div>
+
+  <div class="main">
+    <div class="account-info">
+      <button class="btn-yellow" onclick="logout()">Logout</button>
+      <button class="btn-yellow">Get a Payment-REF</button>
+      <button class="btn-yellow">ACTIVATE WHATSAPP</button>
+      <span id="balance">A/C BALANCE: 0</span>
+    </div>
+
+    <div class="header"><h2>Mountains of the Moon University</h2></div>
+    <div class="status">Year 2, Semester 1 — NOT REGISTERED</div>
+
+    <div id="invoices" class="section table-container">
+      <h3>Invoices</h3>
+      <button class="btn-small">Allocate my Account Balance</button>
+      <table><thead><tr><th>Invoice #</th><th>Invoice Amount</th><th>Paid</th><th>Due</th><th>Narration</th><th>Status</th></tr></thead><tbody></tbody></table>
+    </div>
+
+    <div id="transactions" class="section table-container">
+      <h3>My Transactions / Ledger</h3>
+      <p>Coming soon from Firebase...</p>
+    </div>
+
+    <div id="selfreg" class="section table-container">
+      <h3>Self Registration</h3>
+      <p>Courses will be loaded here from Firebase...</p>
+    </div>
+
+    <div id="regtrack" class="section table-container">
+      <h3>Registration / Student Track</h3>
+      <p>Status will be pulled from Firebase...</p>
+    </div>
+
+    <div id="results" class="section table-container">
+      <h3>My Results</h3>
+      <table><thead><tr><th>Course</th><th>Grade</th><th>GPA</th></tr></thead><tbody></tbody></table>
+    </div>
+
+    <div id="courses" class="section table-container">
+      <h3>My Course</h3>
+      <table><thead><tr><th>Course Code</th><th>Course Title</th><th>Credits</th><th>Status</th></tr></thead><tbody></tbody></table>
+    </div>
+
+    <div id="services" class="section table-container">
+      <h3>Services</h3>
+      <p>Dynamic services info from Firebase...</p>
+    </div>
+
+    <div id="personal" class="section table-container">
+      <h3>Personal Information</h3>
+      <p>Personal info will load from Firebase...</p>
+    </div>
+
+    <div id="general" class="section table-container">
+      <h3>General Information</h3>
+      <p>Announcements and policies from Firebase...</p>
+    </div>
+
+    <div id="tuition" class="section table-container">
+      <h3>Tuition Contract</h3>
+      <p>Contract details will load from Firebase...</p>
+    </div>
+  </div>
+</body>
+</html>
